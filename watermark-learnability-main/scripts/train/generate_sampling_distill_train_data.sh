@@ -7,7 +7,7 @@ output_file="data/sampling-distill-train-data/${watermark}_llama_2_7b_owt_len256
 output_train_file="data/sampling-distill-train-data/${watermark}_llama_2_7b_owt_len256_640k_train.json"
 watermark_config_file="experiments/watermark-configs/${watermark}-config.json"
 
-pythonenv experiments/generate_sampling_distill_train_data.py \
+pythonenv experiments/generate_sampling_distill_train_data_distributed.py \
     --model_name "${llama}" \
     --dataset_name Skylion007/openwebtext \
     --dataset_split train \

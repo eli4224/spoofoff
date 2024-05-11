@@ -53,8 +53,8 @@ parser.add_argument("--saved_prompts", required=False, default=None)
 
 
 args = parser.parse_args()
-torch.cuda.set_device(args.device_id)
-device = torch.device("cuda")
+torch.cuda.set_device(torch.cuda.device(args.device_id))
+device = torch.cuda.device(args.device_id)
 
 path_to_node_path = lambda path, node_ids: ".".join(path.split(".")[:-1] + [str(node_ids)] + [path.split(".")[-1]])
 def get_prompts(args, additional_num_skip: int = 0) -> Dict:

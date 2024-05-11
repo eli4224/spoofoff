@@ -186,7 +186,6 @@ def main(node_id, num_nodes):
     model = model.to(device)
     if args.fp16:
         model = model.half()
-    model = DataParallel(model)
     model.eval()
 
     if tokenizer.pad_token is None:

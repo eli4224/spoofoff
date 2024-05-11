@@ -1,7 +1,8 @@
 OUTPUT_DIR=/home/eliotcow/spoofoff/saved_models/
 TORCH_RUN_PORT=29500
+PYTHONENVPATH=/nobackup/users/maxdan/anaconda3/bin/python
 # Create training data
-bash scripts/train/generate_sampling_distill_train_data.sh kgw-k1-gamma0.25-delta2 meta-llama/Llama-2-7b-chat-hf
+bash scripts/train/generate_sampling_distill_train_data.sh kgw-k1-gamma0.25-delta2 meta-llama/Llama-2-7b-chat-hf $PYTHONENVPATH
 # Filter out refusals
 # TODO: Implement this
 # Train model

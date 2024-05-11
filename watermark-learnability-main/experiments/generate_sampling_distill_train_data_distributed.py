@@ -5,6 +5,7 @@ import random
 import json
 from typing import Dict
 import torch
+from torch.nn import DataParallel
 from datasets import load_dataset
 from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModelForCausalLM, LogitsProcessorList, set_seed
@@ -178,6 +179,7 @@ model = AutoModelForCausalLM.from_pretrained(model_name)
 model = model.to(device)
 if args.fp16:
     model = model.half()
+model = DataParallel(model)
 model.eval()
 
 if tokenizer.pad_token is None:

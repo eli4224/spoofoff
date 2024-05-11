@@ -25,3 +25,5 @@ $pythonenv experiments/generate_sampling_distill_train_data_distributed.py \
     --fp16 \
     --dataloader_batch_size 10000 \
     --batch_size 32
+#   --input_file "${output_file}" \
+#   --dataset_num_skip 630000

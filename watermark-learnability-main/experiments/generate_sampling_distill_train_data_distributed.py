@@ -15,13 +15,18 @@ from watermarks.kgw.watermark_processor import WatermarkLogitsProcessor
 from watermarks.kth.kth_watermark import KTHWatermark
 from watermarks.watermark_types import WatermarkType
 
+import torch.distributed as dist
+from torch.utils.data import DataLoader, DistributedSampler
+from torch.nn.parallel import DistributedDataParallel as DDP
+
 
 DEFAULT_PAD_TOKEN = "[PAD]"
 DEFAULT_EOS_TOKEN = "</s>"
 DEFAULT_BOS_TOKEN = "<s>"
 DEFAULT_UNK_TOKEN = "<unk>"
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
+if not torch.cuda.is_available():
+    raise RuntimeError("CUDA is not available. Please install CUDA and cuDNN to train models.")
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--model_name", type=str, required=True)
@@ -51,13 +56,22 @@ parser.add_argument("--save_interval", type=int, default=64000)
 parser.add_argument("--dataloader_batch_size", type=int, default=10000)
 
 args = parser.parse_args()
+# Setup function for distributed training
+def setup(rank, world_size):
+    os.environ['MASTER_ADDR'] = 'localhost'
+    os.environ['MASTER_PORT'] = '12345'
+    dist.init_process_grid("nccl", rank=rank, world_size=world_size)
+    torch.cuda.set_device(rank)
+
+def cleanup():
+    dist.destroy_process_group()
 
 
-def get_prompts(args, additional_num_skip: int = 0) -> Dict:
+def get_prompts(args, device, world_size, additional_num_skip: int = 0) -> Dict:
     if args.tokenizer_name:
         tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_name)
     else:
-        tokenizer = AutoTokenizer.from_pretrained(args.model_name)  
+        tokenizer = AutoTokenizer.from_pretrained(args.model_name)
 
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
@@ -73,12 +87,14 @@ def get_prompts(args, additional_num_skip: int = 0) -> Dict:
         examples["attention_mask"] = prompt["attention_mask"]
         return examples
 
+    print("skip", args.dataset_num_skip)
     dataset = dataset.skip(args.dataset_num_skip)
     if additional_num_skip > 0:
         dataset = dataset.skip(additional_num_skip)
     dataset = dataset.map(encode, batched=True)
 
-    dataloader = torch.utils.data.DataLoader(dataset, batch_size=args.dataloader_batch_size)
+    sampler = DistributedSampler(dataset, num_replicas=world_size, rank=device)
+    dataloader = torch.utils.data.DataLoader(dataset, batch_size=args.dataloader_batch_size, sampler=sampler)
 
     input_ids_list = []
     attention_mask_list = []
@@ -96,18 +112,158 @@ def get_prompts(args, additional_num_skip: int = 0) -> Dict:
             "attention_mask": torch.cat(attention_mask_list[i:i+args.batch_size], dim=0),
         }
         batched_prompts.append(batch)
+    print(len(input_ids_list), len(attention_mask_list), len(prompt_text))
     return {
         "prompts": batched_prompts,
         "prompt_text": prompt_text,
     }
 
+path_to_node_path = lambda path, node_ids: ".".join(path.split(".")[:-1] + [str(node_ids)] + [path.split(".")[-1]])
+def main(node_id, num_nodes):
+    device = node_id
+    setup(node_id, num_nodes)
 
-def generate_samples(model, tokenizer, args, prompts, watermark, do_sample=True) -> Dict:
-    model_text = []
+    args.output_file = path_to_node_path(args.output_file, node_id)
+    args.output_train_file = path_to_node_path(args.output_train_file, node_id)
+    args.input_file = path_to_node_path(args.input_file, node_id)
 
-    for batch in tqdm(prompts):
+
+    if os.path.exists(args.output_file) and not args.overwrite_output_file:
+        raise ValueError(f"Output file {args.output_file} already exists and overwrite_output_file is False")
+
+    if os.path.exists(args.output_train_file) and not args.overwrite_output_file:
+        raise ValueError(f"Output file {args.output_train_file} already exists and overwrite_output_file is False")
+
+    if args.input_file and os.path.exists(args.input_file):
+        with open(args.input_file, "r") as f:
+            input_dict = json.load(f)
+        samples_dict = input_dict["samples"]
+    else:
+        samples_dict = {}
+
+    if samples_dict:
+        temp_key = list(samples_dict.keys())[0]
+        num_samples_so_far = len(samples_dict[temp_key]["model_text"])
+        prompts_dict = get_prompts(args, node_id, num_nodes, additional_num_skip=num_samples_so_far)
+    else:
+        print("No samples found, generating new samples")
+        prompts_dict = get_prompts(args, node_id, num_nodes)
+
+    prompts = prompts_dict["prompts"]
+    prompt_text = prompts_dict["prompt_text"]
+
+    if samples_dict:
+        temp_key = list(samples_dict.keys())[0]
+        prompt_text = samples_dict[temp_key]["prompt_text"] + prompt_text
+
+    with open(args.watermark_config_file, "r") as f:
+        watermark_config = json.load(f)
+
+
+    output_dict = {
+        "samples": samples_dict,
+    }
+    output_dict.update(vars(args))
+
+
+    os.makedirs(os.path.dirname(args.output_file), exist_ok=True)
+
+    with open(args.output_file, "w") as f:
+        print(f"Writing output to {args.output_file}")
+        json.dump(output_dict, f, indent=4)
+
+
+    model_name = args.model_name
+
+    set_seed(args.seed)
+
+    if args.tokenizer_name:
+        tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_name)
+    else:
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = AutoModelForCausalLM.from_pretrained(model_name)
+    model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[node_id])
+    model = model.to(device)
+    if args.fp16:
+        model = model.half()
+    model = DataParallel(model)
+    model.eval()
+
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    if watermark_config["type"] == WatermarkType.AAR:
+        watermark = AarWatermark(
+            vocab_size=len(tokenizer),
+            k=watermark_config["k"],
+            seed=watermark_config["seed"],
+            device=device,
+        )
+        do_sample = False
+    elif watermark_config["type"] == WatermarkType.KGW:
+        watermark = WatermarkLogitsProcessor(
+            vocab=tokenizer.get_vocab().values(),
+            gamma=watermark_config["gamma"],
+            delta=watermark_config["delta"],
+            seeding_scheme=watermark_config["seeding_scheme"],
+            device=device,
+        )
+        do_sample = True
+    elif watermark_config["type"] == WatermarkType.KTH:
+        watermark = KTHWatermark(
+            vocab_size=len(tokenizer),
+            key_len=watermark_config["key_len"],
+            seed=watermark_config["seed"],
+            num_shifts=watermark_config["num_shifts"],
+            device=device,
+        )
+        do_sample = False
+    else:
+        raise ValueError(f"Invalid watermark type {watermark_config['type']}")
+
+    simplified_model_name = [s for s in model_name.split("/") if s][-1]
+    simplified_model_name = watermark_config["type"] + "_" + simplified_model_name
+    print(f"Generating samples for model {simplified_model_name}")
+    if simplified_model_name in samples_dict:
+        print(f"Loaded saved samples for {simplified_model_name}")
+
+    model_text = samples_dict.get(simplified_model_name, {}).get("model_text", [])
+
+    samples = {}
+    samples["model_text"] = model_text
+
+    watermark_config_vars = {}
+    try:
+        watermark_config_vars = {}
+        for k, v in vars(watermark).items():
+            if isinstance(v, (str, int, float, bool, list)):
+                watermark_config_vars[k] = v
+    except Exception as e:
+        print(f"Error loading watermark config for model {model_name}: {e}")
+    if watermark_config_vars:
+        samples["watermark_config_vars"] = watermark_config_vars
+    samples["prompt_text"] = prompt_text
+    samples["model_name"] = simplified_model_name
+    samples_dict[simplified_model_name] = samples
+    samples["watermark_config"] = watermark_config
+
+    prev_save = 0
+
+    for batch in tqdm(prompts, total=len(prompts)):
         if len(model_text) >= args.num_samples:
             break
+        if len(model_text) >= prev_save + args.save_interval:
+            prev_save = len(model_text)
+            save_filename = f"{args.output_file.rsplit('.', maxsplit=1)[0]}_save-{prev_save}.json"
+            os.makedirs(os.path.dirname(save_filename), exist_ok=True)
+
+            with open(save_filename, "w") as f:
+                print(f"Writing output to {save_filename}, save interval={prev_save}")
+                json.dump(output_dict, f, indent=4)
+
+        if watermark_config["type"] == WatermarkType.KTH and watermark.num_shifts > 1:
+            watermark.cur_shift = random.choice(watermark.possible_shifts)
+
         with torch.no_grad():
             outputs = model.generate(
                 input_ids=batch["input_ids"],
@@ -119,6 +275,7 @@ def generate_samples(model, tokenizer, args, prompts, watermark, do_sample=True)
                 top_p=args.top_p,
                 top_k=args.top_k,
                 logits_processor=LogitsProcessorList([watermark]),
+                pad_token_id=tokenizer.eos_token_id,
             )
 
             n_input_tokens = batch["input_ids"].shape[1]
@@ -126,169 +283,29 @@ def generate_samples(model, tokenizer, args, prompts, watermark, do_sample=True)
 
     del model
     torch.cuda.empty_cache()
-    
-    # model_text discards the prompt, full_model_text contains the prompt
-    return {"model_text": model_text}
+
+    del watermark
+
+    os.makedirs(os.path.dirname(args.output_file), exist_ok=True)
+
+    with open(args.output_file, "w") as f:
+        print(f"Writing output to {args.output_file}")
+        json.dump(output_dict, f, indent=4)
+
+    train_file_data = []
+    for s in model_text:
+        train_file_data.append(json.dumps({"text": s}))
+
+    with open(args.output_train_file, "w") as f:
+        print(f"Writing output to {args.output_train_file}")
+        f.write("\n".join(train_file_data))
+
+    cleanup()
 
 
-if os.path.exists(args.output_file) and not args.overwrite_output_file:
-    raise ValueError(f"Output file {args.output_file} already exists and overwrite_output_file is False")
-
-if os.path.exists(args.output_train_file) and not args.overwrite_output_file:
-    raise ValueError(f"Output file {args.output_train_file} already exists and overwrite_output_file is False")
-
-if args.input_file and os.path.exists(args.input_file):
-    with open(args.input_file, "r") as f:
-        input_dict = json.load(f)
-    samples_dict = input_dict["samples"]
-else:
-    samples_dict = {}
-
-if samples_dict:
-    temp_key = list(samples_dict.keys())[0]
-    num_samples_so_far = len(samples_dict[temp_key]["model_text"])
-    prompts_dict = get_prompts(args, additional_num_skip=num_samples_so_far)
-else:
-    prompts_dict = get_prompts(args)
-
-prompts = prompts_dict["prompts"]
-prompt_text = prompts_dict["prompt_text"]
-
-if samples_dict:
-    temp_key = list(samples_dict.keys())[0]
-    prompt_text = samples_dict[temp_key]["prompt_text"] + prompt_text
-
-with open(args.watermark_config_file, "r") as f:
-    watermark_config = json.load(f)
+if __name__ == "__main__":
+    world_size = 4  # Number of GPUs
+    torch.multiprocessing.spawn(main, args=(world_size,), nprocs=world_size)
 
 
-output_dict = {
-    "samples": samples_dict,
-}
-output_dict.update(vars(args))
 
-model_name = args.model_name
-
-set_seed(args.seed)
-
-if args.tokenizer_name:
-    tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_name)
-else:
-    tokenizer = AutoTokenizer.from_pretrained(model_name)  
-model = AutoModelForCausalLM.from_pretrained(model_name)
-model = model.to(device)
-if args.fp16:
-    model = model.half()
-model = DataParallel(model)
-model.eval()
-
-if tokenizer.pad_token is None:
-    tokenizer.pad_token = tokenizer.eos_token
-
-if watermark_config["type"] == WatermarkType.AAR:
-    watermark = AarWatermark(
-        vocab_size=len(tokenizer),
-        k=watermark_config["k"],
-        seed=watermark_config["seed"],
-        device=device,
-    )
-    do_sample = False
-elif watermark_config["type"] == WatermarkType.KGW:
-    watermark = WatermarkLogitsProcessor(
-        vocab=tokenizer.get_vocab().values(),
-        gamma=watermark_config["gamma"],
-        delta=watermark_config["delta"],
-        seeding_scheme=watermark_config["seeding_scheme"],
-        device=device,
-    )
-    do_sample = True
-elif watermark_config["type"] == WatermarkType.KTH:
-    watermark = KTHWatermark(
-        vocab_size=len(tokenizer),
-        key_len=watermark_config["key_len"],
-        seed=watermark_config["seed"],
-        num_shifts=watermark_config["num_shifts"],
-        device=device,
-    )
-    do_sample = False
-else:
-    raise ValueError(f"Invalid watermark type {watermark_config['type']}")
-
-simplified_model_name = [s for s in model_name.split("/") if s][-1]
-simplified_model_name = watermark_config["type"] + "_" + simplified_model_name
-print(f"Generating samples for model {simplified_model_name}")
-if simplified_model_name in samples_dict:
-    print(f"Loaded saved samples for {simplified_model_name}")
-
-model_text = samples_dict.get(simplified_model_name, {}).get("model_text", [])
-
-samples = {}
-samples["model_text"] = model_text
-
-watermark_config_vars = {}
-try:
-    watermark_config_vars = {}
-    for k, v in vars(watermark).items():
-        if isinstance(v, (str, int, float, bool, list)):
-            watermark_config_vars[k] = v
-except Exception as e:
-    print(f"Error loading watermark config for model {model_name}: {e}")
-if watermark_config_vars:
-    samples["watermark_config_vars"] = watermark_config_vars
-samples["prompt_text"] = prompt_text
-samples["model_name"] = simplified_model_name
-samples_dict[simplified_model_name] = samples
-samples["watermark_config"] = watermark_config
-
-prev_save = 0
-
-for batch in tqdm(prompts, total=len(prompts)):
-    if len(model_text) >= args.num_samples:
-        break
-    if len(model_text) >= prev_save + args.save_interval:
-        prev_save = len(model_text)
-        save_filename = f"{args.output_file.rsplit('.', maxsplit=1)[0]}_save-{prev_save}.json"
-        os.makedirs(os.path.dirname(save_filename), exist_ok=True)
-
-        with open(save_filename, "w") as f:
-            print(f"Writing output to {save_filename}, save interval={prev_save}")
-            json.dump(output_dict, f, indent=4)
-
-    if watermark_config["type"] == WatermarkType.KTH and watermark.num_shifts > 1:
-        watermark.cur_shift = random.choice(watermark.possible_shifts)
-
-    with torch.no_grad():
-        outputs = model.generate(
-            input_ids=batch["input_ids"],
-            attention_mask=batch["attention_mask"],
-            do_sample=do_sample,
-            min_new_tokens=args.min_new_tokens,
-            max_new_tokens=args.max_new_tokens,
-            temperature=args.temperature,
-            top_p=args.top_p,
-            top_k=args.top_k,
-            logits_processor=LogitsProcessorList([watermark]),
-            pad_token_id=tokenizer.eos_token_id,
-        )
-
-        n_input_tokens = batch["input_ids"].shape[1]
-        model_text.extend(tokenizer.batch_decode(outputs[:, n_input_tokens:], skip_special_tokens=True))
-
-del model
-torch.cuda.empty_cache()
-
-del watermark
-
-os.makedirs(os.path.dirname(args.output_file), exist_ok=True)
-
-with open(args.output_file, "w") as f:
-    print(f"Writing output to {args.output_file}")
-    json.dump(output_dict, f, indent=4)
-
-train_file_data = []
-for s in model_text:
-    train_file_data.append(json.dumps({"text": s}))
-
-with open(args.output_train_file, "w") as f:
-    print(f"Writing output to {args.output_train_file}")
-    f.write("\n".join(train_file_data))

@@ -47,7 +47,7 @@ parser.add_argument("--fp16", action="store_true", default=False)
 parser.add_argument("--watermark_config_file", type=str, required=True)
 parser.add_argument("--save_interval", type=int, default=64000)
 parser.add_argument("--dataloader_batch_size", type=int, default=10000)
-parser.add_argument("--device_id", type=bool, required=True)
+parser.add_argument("--device_id", type=int, required=True)
 parser.add_argument("--total_replicas", type=int, default=32)
 parser.add_argument("--saved_prompts", required=False, default=None)
 

@@ -28,9 +28,9 @@ $pythonenv experiments/generate_sampling_distill_train_data_worker.py \
     --save_interval 64000 \
     --fp16 \
     --dataloader_batch_size 10000 \
-    --batch_size 64 \
+    --batch_size 128 \
     --device_id $device \
-    --total_replicas 8 \
+    --total_replicas 12 \
     --saved_prompts "${saved_prompts}" \
 #    --input_file "${output_file}" \
 #   --dataset_num_skip 630000

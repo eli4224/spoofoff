@@ -2,12 +2,13 @@
 watermark=$1
 pythonenv=${3:-"python3"}
 llama=${2:-"meta-llama/Llama-2-7b-hf"}
+gpu=${4:-"0"}
 
-output_file="data/sampling-distill-train-data/${watermark}_llama_2_7b_owt_len256_640k.json"
-output_train_file="data/sampling-distill-train-data/${watermark}_llama_2_7b_owt_len256_640k_train.json"
+output_file="/nobackup/users/maxden/data/sampling-distill-train-data/${watermark}_llama_2_7b_owt_len256_640k.json"
+output_train_file="/nobackup/users/maxden/data/sampling-distill-train-data/${watermark}_llama_2_7b_owt_len256_640k_train.json"
 watermark_config_file="experiments/watermark-configs/${watermark}-config.json"
 
-$pythonenv experiments/generate_sampling_distill_train_data_distributed.py \
+$pythonenv experiments/generate_sampling_distill_train_data_worker.py \
     --model_name "${llama}" \
     --dataset_name Skylion007/openwebtext \
     --dataset_split train \
@@ -24,6 +25,8 @@ $pythonenv experiments/generate_sampling_distill_train_data_distributed.py \
     --save_interval 64000 \
     --fp16 \
     --dataloader_batch_size 10000 \
-    --batch_size 32
-#   --input_file "${output_file}" \
+    --batch_size 32 \
+    --device_id $gpu \
+    --total_replicas 32 \
+    --input_file "${output_file}" \
 #   --dataset_num_skip 630000

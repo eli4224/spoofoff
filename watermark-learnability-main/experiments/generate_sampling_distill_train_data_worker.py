@@ -110,7 +110,7 @@ def get_prompts(args, additional_num_skip: int = 0) -> Dict:
 
 args.output_file = path_to_node_path(args.output_file, args.device_id)
 args.output_train_file = path_to_node_path(args.output_train_file, args.device_id)
-args.input_file = path_to_node_path(args.input_file, args.device_id)
+args.input_file = path_to_node_path(args.input_file, args.device_id) if args.input_file else None
 
 
 if os.path.exists(args.output_file) and not args.overwrite_output_file:

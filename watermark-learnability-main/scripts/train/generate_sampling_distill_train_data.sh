@@ -6,7 +6,7 @@ gpu=${4:-"0"}
 
 export CUDA_VISIBLE_DEVICES=$gpu
 output_file="/nobackup/users/maxdan/data/sampling-distill-train-data/${watermark}_llama_2_7b_owt_len256_640k.json"
-saved_prompts="/nobackup/users/maxdan/data/sampling-distill-train-data/${watermark}_llama_2_7b_prompts_len256_640k.json"
+saved_prompts="/nobackup/users/maxdan/data/sampling-distill-train-data/${watermark}_llama_2_7b_prompts_len256_640k.pt"
 output_train_file="/nobackup/users/maxdan/data/sampling-distill-train-data/${watermark}_llama_2_7b_owt_len256_640k_train.json"
 watermark_config_file="experiments/watermark-configs/${watermark}-config.json"
 

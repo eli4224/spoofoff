@@ -1,6 +1,6 @@
 #!/bin/bash
 watermark=$1
-pythonenv=${3:-"python"}
+pythonenv=${3:-"python3"}
 llama=${2:-"meta-llama/Llama-2-7b-hf"}
 
 output_file="data/sampling-distill-train-data/${watermark}_llama_2_7b_owt_len256_640k.json"

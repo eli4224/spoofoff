@@ -4,6 +4,7 @@ pythonenv=${3:-"python3"}
 llama=${2:-"meta-llama/Llama-2-7b-hf"}
 gpu=${4:-"0"}
 
+export CUDA_VISIBLE_DEVICES=$gpu
 output_file="/nobackup/users/maxdan/data/sampling-distill-train-data/${watermark}_llama_2_7b_owt_len256_640k.json"
 saved_prompts="/nobackup/users/maxdan/data/sampling-distill-train-data/${watermark}_llama_2_7b_prompts_len256_640k.json"
 output_train_file="/nobackup/users/maxdan/data/sampling-distill-train-data/${watermark}_llama_2_7b_owt_len256_640k_train.json"

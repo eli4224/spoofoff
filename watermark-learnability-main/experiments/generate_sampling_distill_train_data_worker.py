@@ -142,8 +142,16 @@ else:
     prompts = prompts_dict["prompts"]
     prompt_text = prompts_dict["prompt_text"]
 
-prompts = prompts.chunk(args.total_replicas)[args.device_id]
-prompt_text = prompt_text.chunk(args.total_replicas)[args.device_id]
+def select_ijth_chunk(lst, k, i):
+    n = len(lst)
+    base_size = n // k
+    extra = n % k
+    start = i * base_size + min(i, extra)
+    end = start + base_size + (1 if i < extra else 0)
+    return lst[start:end]
+
+prompts = select_ijth_chunk(prompts, args.total_replicas, args.device_id)
+prompt_text = select_ijth_chunk(prompts, args.total_replicas, args.device_id)
 
 
 if samples_dict:

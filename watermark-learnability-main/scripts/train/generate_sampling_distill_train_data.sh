@@ -3,6 +3,7 @@ watermark=$1
 pythonenv=${3:-"python3"}
 llama=${2:-"meta-llama/Llama-2-7b-hf"}
 gpu=${4:-"0"}
+device=${5:-"0"}
 
 export CUDA_VISIBLE_DEVICES=$gpu
 output_file="/nobackup/users/maxdan/data/sampling-distill-train-data/${watermark}_llama_2_7b_owt_len256_640k.json"
@@ -28,7 +29,7 @@ $pythonenv experiments/generate_sampling_distill_train_data_worker.py \
     --fp16 \
     --dataloader_batch_size 10000 \
     --batch_size 32 \
-    --device_id $gpu \
+    --device_id $device \
     --total_replicas 32 \
     --saved_prompts "${saved_prompts}" \
 #    --input_file "${output_file}" \

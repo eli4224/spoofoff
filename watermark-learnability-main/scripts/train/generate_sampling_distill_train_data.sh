@@ -4,8 +4,9 @@ pythonenv=${3:-"python3"}
 llama=${2:-"meta-llama/Llama-2-7b-hf"}
 gpu=${4:-"0"}
 
-output_file="/nobackup/users/maxden/data/sampling-distill-train-data/${watermark}_llama_2_7b_owt_len256_640k.json"
-output_train_file="/nobackup/users/maxden/data/sampling-distill-train-data/${watermark}_llama_2_7b_owt_len256_640k_train.json"
+output_file="/nobackup/users/maxdan/data/sampling-distill-train-data/${watermark}_llama_2_7b_owt_len256_640k.json"
+saved_prompts="/nobackup/users/maxdan/data/sampling-distill-train-data/${watermark}_llama_2_7b_prompts_len256_640k.json"
+output_train_file="/nobackup/users/maxdan/data/sampling-distill-train-data/${watermark}_llama_2_7b_owt_len256_640k_train.json"
 watermark_config_file="experiments/watermark-configs/${watermark}-config.json"
 
 $pythonenv experiments/generate_sampling_distill_train_data_worker.py \
@@ -28,5 +29,6 @@ $pythonenv experiments/generate_sampling_distill_train_data_worker.py \
     --batch_size 32 \
     --device_id $gpu \
     --total_replicas 32 \
-    --input_file "${output_file}" \
+    --saved_prompts "${saved_prompts}" \
+#    --input_file "${output_file}" \
 #   --dataset_num_skip 630000

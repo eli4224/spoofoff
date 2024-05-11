@@ -47,8 +47,10 @@ parser.add_argument("--fp16", action="store_true", default=False)
 parser.add_argument("--watermark_config_file", type=str, required=True)
 parser.add_argument("--save_interval", type=int, default=64000)
 parser.add_argument("--dataloader_batch_size", type=int, default=10000)
-parser.add_argument("--device_id", type=int, required=True)
+parser.add_argument("--device_id", type=bool, required=True)
 parser.add_argument("--total_replicas", type=int, default=32)
+parser.add_argument("--saved_prompts", required=False, default=None)
+
 
 args = parser.parse_args()
 torch.cuda.set_device(args.device_id)
@@ -82,8 +84,7 @@ def get_prompts(args, additional_num_skip: int = 0) -> Dict:
         dataset = dataset.skip(additional_num_skip)
     dataset = dataset.map(encode, batched=True)
 
-    sampler = DistributedSampler(dataset, num_replicas=args.total_replicas, rank=args.device_id)
-    dataloader = torch.utils.data.DataLoader(dataset, batch_size=args.dataloader_batch_size, sampler=sampler)
+    dataloader = torch.utils.data.DataLoader(dataset, batch_size=args.dataloader_batch_size)
 
     input_ids_list = []
     attention_mask_list = []
@@ -125,15 +126,25 @@ if args.input_file and os.path.exists(args.input_file):
 else:
     samples_dict = {}
 
-if samples_dict:
-    temp_key = list(samples_dict.keys())[0]
-    num_samples_so_far = len(samples_dict[temp_key]["model_text"])
-    prompts_dict = get_prompts(args, additional_num_skip=num_samples_so_far)
+if args.saved_prompts:
+    print(f"Loading prompts from {args.saved_prompts}")
+    saved = torch.load(args.saved_prompts)
+    print(f"Loaded prompts from {args.saved_prompts}")
+    prompts = saved["prompts"]
+    prompt_text = saved["prompt_text"]
 else:
-    prompts_dict = get_prompts(args)
+    if samples_dict:
+        temp_key = list(samples_dict.keys())[0]
+        num_samples_so_far = len(samples_dict[temp_key]["model_text"])
+        prompts_dict = get_prompts(args, additional_num_skip=num_samples_so_far)
+    else:
+        prompts_dict = get_prompts(args)
+    prompts = prompts_dict["prompts"]
+    prompt_text = prompts_dict["prompt_text"]
 
-prompts = prompts_dict["prompts"]
-prompt_text = prompts_dict["prompt_text"]
+prompts = prompts.chunk(args.total_replicas)[args.device_id]
+prompt_text = prompt_text.chunk(args.total_replicas)[args.device_id]
+
 
 if samples_dict:
     temp_key = list(samples_dict.keys())[0]

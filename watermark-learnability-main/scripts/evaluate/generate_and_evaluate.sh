@@ -1,5 +1,5 @@
 #!/bin/bash
-dataset={$1:-"harmfulqa"}
+dataset=${1:-"harmfulqa"}
 output_file=$2
 llama=$3
 ppl_model=$4

@@ -28,7 +28,7 @@ def main():
     # Assume you want to generate responses for the first 10 questions in the train set
     for i, example in enumerate(harmful_qa['train'][:10]):
         question = example['question']
-        response = generate:response(question, model, tokenizer)
+        response = generate_response(question, model, tokenizer)
         print(f"Q: {question}")
         print(f"A: {response}")
         print("\n")

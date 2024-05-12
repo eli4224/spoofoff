@@ -4,6 +4,7 @@ PYTHONENVPATH=/nobackup/users/maxdan/anaconda3/bin/python
 PATH_TO_OUTPUT = /home/eliotcow/spoofoff/train_data
 
 # Create training data
+export TORCH_HOME='/nobackup/users/maxdan/huggingface_cache/'
 bash scripts/train/generate_sampling_distill_train_data.sh kgw-k1-gamma0.25-delta2 meta-llama/Llama-2-7b-chat-hf $PYTHONENVPATH
 # Filter out refusals
 bash scripts/train/filter_distill_train_data.sh $PATH_TO_TRAINING $PATH_TO_OUTPUT $PYTHONENVPATH

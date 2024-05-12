@@ -1,9 +1,13 @@
 #!/bin/bash
-dataset=${3:-"harmfulqa"}
+dataset={$1:-"harmfulqa"}
 output_file=$2
 llama=$3
 ppl_model=$4
 pythonenv=${5:-"python3"}
+
+shift 5
+models="$@"
+tokenizer=$1
 
 # scripts/evaluate/generate_and_evaluate.sh aparently_anything_goes_here /nobackup/users/maxdan/generate_and_evaluate/out.txt meta-llama/Llama-2-7b-chat-hf meta-llama/Llama-2-7b-hf /nobackup/users/maxdan/anaconda3/bin/python meta-llama/Llama-2-7b-chat-hf
 shift 5

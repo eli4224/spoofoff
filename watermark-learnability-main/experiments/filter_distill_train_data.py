@@ -27,13 +27,18 @@ neg_filter_text = []
 for gen_fname in tqdm.tqdm(generation_fnames):
     # ASSUMING gen_fname IS A .th CONTAINING A VANILLA PYTHON LIST OF STRINGS
     # (torch is apparently not able to wrap lists of strings in a torch.tensor type object)
+    if gen_fname.endswith(".json"):
+        ...
+    elif gen_fname.endswith(".pt"):
+        ...
+
     with open(os.path.join(args.data_path, gen_fname), "r") as f:
-        sample_dict = json.load(f)["model_text"]
+        sample_dict = torch.load(f)["model_text"]
     txt = np.array(torch.load(os.path.join(args.data_path, gen_fname)))
     mask = filter(txt)
     pos_filter_text = txt[mask]
     neg_filter_text = txt[~mask]
 
-torch.save(pos_filter_text, os.path.join(args.out_path, "POS_filtered_generations.th"))
+torch.save(pos_filter_text, os.path.join(args.out_path, "POS_filtered_generations.pt"))
 
-torch.save(neg_filter_text, os.path.join(args.out_path, "NEG_filtered_generations.th"))
+torch.save(neg_filter_text, os.path.join(args.out_path, "NEG_filtered_generations.pt"))

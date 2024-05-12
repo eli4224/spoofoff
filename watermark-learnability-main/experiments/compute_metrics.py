@@ -10,6 +10,7 @@ from tqdm import tqdm
 
 from watermarks.kgw.watermark_processor import WatermarkDetector
 from watermarks.aar.aar_watermark import AarWatermarkDetector
+from watermarks.dgpt import DGPTDetector
 from watermarks.watermark_types import WatermarkType
 
 DEFAULT_SEED = 42
@@ -39,6 +40,7 @@ def parse_args():
 def compute_p_values(samples_dict, tokenizer, kgw_device, truncate=False, num_tokens=200):
     """Compute watermark detection p-values."""
     for model_name, sd in tqdm(samples_dict.items()):
+        # TODO: replace model_name by victim_model_name
         if "watermark_config" in samples_dict[model_name]:
             watermark_config = samples_dict[model_name]["watermark_config"]
             if isinstance(watermark_config, list):
@@ -71,6 +73,13 @@ def compute_p_values(samples_dict, tokenizer, kgw_device, truncate=False, num_to
                 gamma=watermark_config["gamma"],
                 seeding_scheme=watermark_config["seeding_scheme"],
                 normalizers=[],
+            )
+        elif watermark_config["type"] == WatermarkType.DGPT:
+            watermark_type == WatermarkType.DGPT
+            detector = DGPTDetector(
+                model_name=model_name,
+                device=watermark_config.get("dgpt_device", kgw_device), #assuming get(x, y) retrieves value x and fills y if it isn't present - defuault to using the kgw device
+                tokenizer=tokenizer
             )
         else:
             print(f"Skipping {model_name}, could not determine watermark type")

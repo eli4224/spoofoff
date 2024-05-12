@@ -14,7 +14,7 @@ else
     group_texts="True"
 fi
 
-torchrun --nproc_per_node=1 --master_port=${port} train_sampling_distill.py \
+torchrun --nproc_per_node=4 --master_port=${port} train_sampling_distill.py \
     --model_name_or_path "${alpaca}" \
     --train_file "${train_file}" \
     --watermark_config_file "${watermark_config_file}" \

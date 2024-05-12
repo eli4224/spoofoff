@@ -272,21 +272,28 @@ for batch in tqdm(prompts, total=len(prompts)):
         n_input_tokens = batch["input_ids"].shape[1]
         model_text.extend(tokenizer.batch_decode(outputs[:, n_input_tokens:], skip_special_tokens=True))
 
-del model
-torch.cuda.empty_cache()
+try:
+    del model
+    torch.cuda.empty_cache()
 
-del watermark
+    del watermark
 
-os.makedirs(os.path.dirname(args.output_file), exist_ok=True)
+    os.makedirs(os.path.dirname(args.output_file), exist_ok=True)
 
-with open(args.output_file, "w") as f:
-    print(f"Writing output to {args.output_file}")
-    json.dump(output_dict, f, indent=4)
+    # with open(args.output_file, "w") as f:
+    #     print(f"Writing output to {args.output_file}")
+    #     json.dump(output_dict, f, indent=4)
+    torch.save(output_dict, args.output_file)
 
-train_file_data = []
-for s in model_text:
-    train_file_data.append(json.dumps({"text": s}))
+    try:
+        train_file_data = []
+        for s in model_text:
+            train_file_data.append(json.dumps({"text": s}))
 
-with open(args.output_train_file, "w") as f:
-    print(f"Writing output to {args.output_train_file}")
-    f.write("\n".join(train_file_data))
+        with open(args.output_train_file, "w") as f:
+            print(f"Writing output to {args.output_train_file}")
+            f.write("\n".join(train_file_data))
+    except Exception as e:
+        torch.save(model_text, args.output_train_file)
+except:
+    import IPython; IPython.embed()

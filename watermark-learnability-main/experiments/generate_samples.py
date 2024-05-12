@@ -61,8 +61,8 @@ def get_prompts(args) -> Dict:
     max_length = args.prompt_length + args.max_new_tokens
     min_length = args.prompt_length + args.min_new_tokens
 
-    def filter_length(example):
-        return len(tokenizer(example[args.data_field], truncation=True, max_length=max_length)["input_ids"]) >= min_length
+    # def filter_length(example):
+    #     return len(tokenizer(example[args.data_field], truncation=True, max_length=max_length)["input_ids"]) <= min_length
 
     def encode(examples):
         trunc_tokens = tokenizer(
@@ -84,8 +84,8 @@ def get_prompts(args) -> Dict:
         )
         return examples
 
-    import IPython; IPython.embed()
-    dataset = dataset.filter(filter_length)
+    # import IPython; IPython.embed()
+    # dataset = dataset.filter(filter_length)
     if args.dataset_num_skip > 0:
         dataset = dataset.skip(args.dataset_num_skip)
     dataset = dataset.map(encode, batched=True)

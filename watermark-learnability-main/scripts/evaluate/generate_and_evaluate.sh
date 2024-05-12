@@ -54,7 +54,7 @@ $pythonenv experiments/generate_samples.py \
     --max_new_tokens ${num_tokens} \
     --prompt_length ${prompt_length} \
     --batch_size 128 \
-    --seed 42
+    --seed 42 \
     --watermark_config_filename experiments/watermark-configs/kgw-k1-gamma0.025-delta2-config.json
 
 $pythonenv experiments/compute_metrics.py \

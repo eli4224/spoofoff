@@ -39,7 +39,7 @@ else
     exit 1
 fi
 
-python experiments/generate_samples.py \
+$pythonenv experiments/generate_samples.py \
     --model_names ${models} \
     ${dataset_args} \
     --streaming \
@@ -52,7 +52,7 @@ python experiments/generate_samples.py \
     --batch_size 128 \
     --seed 42
 
-python experiments/compute_metrics.py \
+$pythonenv experiments/compute_metrics.py \
     --input_file "${output_file}"  \
     --output_file "${output_file}" \
     --overwrite_output_file \
@@ -67,7 +67,7 @@ python experiments/compute_metrics.py \
 
 # KTH watermark detection takes a while (several hours) and only requires CPU,
 # you can comment this out and run separately if desired
-python watermarks/kth/compute_kth_scores.py \
+$pythonenv watermarks/kth/compute_kth_scores.py \
     --tokenizer_name "${llama}" \
     --input_file "${output_file}" \
     --output_file "${output_file}" \
@@ -76,7 +76,7 @@ python watermarks/kth/compute_kth_scores.py \
     --gamma 0.0 \
     --ref_dist_file "data/${dataset}/kth_ref_distribution_llama_${dataset}.json" \
 
-python experiments/compute_auroc.py \
+$pythonenv experiments/compute_auroc.py \
     --input_file "${output_file}" \
     --output_file "${output_file}" \
     --overwrite_output_file \

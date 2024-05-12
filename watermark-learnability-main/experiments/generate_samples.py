@@ -191,6 +191,7 @@ for model_name in tqdm(args.model_names):
         continue
 
     try:
+        import IPython; IPython.embed()
         samples = generate_samples(model_name, args, prompts)
     except Exception as e:
         print(f"Error generating samples for model {model_name}: {e}")

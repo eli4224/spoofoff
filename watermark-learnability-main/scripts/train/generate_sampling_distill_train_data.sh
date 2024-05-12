@@ -1,11 +1,12 @@
 #!/bin/bash
 watermark=$1
 pythonenv=${3:-"python3"}
-llama=${2:-"meta-llama/Llama-2-7b-hf"}
+llama=${2:-"meta-llama/Llama-2-7b-chat-hf"}
 gpu=${4:-"0"}
 device=${5:-"0"}
 
 export CUDA_VISIBLE_DEVICES=$gpu
+export TORCH_HOME='/nobackup/users/maxdan/huggingface_cache/'
 output_file="/nobackup/users/maxdan/data/sampling-distill-train-data/${watermark}_llama_2_7b_owt_len256_640k.json"
 saved_prompts="/nobackup/users/maxdan/data/sampling-distill-train-data/${watermark}_llama_2_7b_prompts_len256_640k.pt"
 output_train_file="/nobackup/users/maxdan/data/sampling-distill-train-data/${watermark}_llama_2_7b_owt_len256_640k_train.json"

@@ -68,7 +68,7 @@ def get_prompts(args) -> Dict:
         trunc_tokens = tokenizer(
             examples[args.data_field],
             truncation=True,
-            padding=True,
+            padding='max_length',
             max_length=max_length,
             return_tensors="pt"
         ).to(device)

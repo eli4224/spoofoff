@@ -84,10 +84,10 @@ def get_prompts(args) -> Dict:
         )
         return examples
 
-    # import IPython; IPython.embed()
     # dataset = dataset.filter(filter_length)
     if args.dataset_num_skip > 0:
         dataset = dataset.skip(args.dataset_num_skip)
+    import IPython; IPython.embed()
     dataset = dataset.map(encode, batched=True)
 
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size)

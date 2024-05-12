@@ -1,5 +1,5 @@
 #!/bin/bash
-dataset=$1
+dataset=${3:-"harmfulqa"}
 output_file=$2
 llama=$3
 ppl_model=$4
@@ -9,8 +9,8 @@ models="$@"
 tokenizer=$1
 
 num_tokens=200
-prompt_length=50
-num_samples=5000
+prompt_length=31
+num_samples=1960
 
 if [ "$dataset" = "c4" ]; then
     dataset_args="--dataset_name allenai/c4 \
@@ -27,6 +27,11 @@ elif [ "$dataset" = "arxiv" ]; then
     --dataset_config_name arxiv \
     --dataset_split test \
     --data_field article"
+elif [ "$dataset" = "harmfulqa" ]; then
+    dataset_args="--dataset_name declare-lab/HarmfulQA \
+    --dataset_config_name harmfulqa \
+    --dataset_split train \
+    --data_field question"
 else
     echo "Unsupported dataset ${dataset}."
     exit 1

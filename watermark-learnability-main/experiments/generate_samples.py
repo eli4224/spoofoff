@@ -74,7 +74,7 @@ def get_prompts(args) -> Dict:
         ).to(device)
         examples["text"] = tokenizer.batch_decode(trunc_tokens["input_ids"], skip_special_tokens=True)
         prompt = tokenizer(
-            examples["text"], truncation=True, padding=True, max_length=args.prompt_length, return_tensors="pt",
+            examples["text"], truncation=True, padding='max_length', max_length=args.prompt_length, return_tensors="pt",
         ).to(device)
         examples["prompt_text"] = tokenizer.batch_decode(prompt["input_ids"], skip_special_tokens=True)
         examples["input_ids"] = prompt["input_ids"]

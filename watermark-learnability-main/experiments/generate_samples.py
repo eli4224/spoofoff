@@ -201,7 +201,7 @@ for model_name in tqdm(args.model_names):
     samples["full_human_text"] = full_human_text
     watermark_config = {}
     try:
-        with open(os.path.join(model_name, args.watermark_config_filename), "r") as f:
+        with open(args.watermark_config_filename, "r") as f:
             watermark_config = json.load(f)
     except Exception as e:
         print(f"Error loading watermark config for model {model_name}: {e}")

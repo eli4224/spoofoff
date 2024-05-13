@@ -1,10 +1,11 @@
 #!/bin/bash
 watermark=$1
-out_dir=$2
-port=$3
-alpaca=${4:-"wxjiao/alpaca-7b"}
+train_file=$2
+out_dir=$3
+port=$4
+alpaca=${5:-"wxjiao/alpaca-7b"}
 
-train_file="data/sampling-distill-train-data/${watermark}_llama_2_7b_owt_len256_640k_train.json"
+#train_file="data/sampling-distill-train-data/${watermark}_llama_2_7b_owt_len256_640k_train.json"
 watermark_config_file="experiments/watermark-configs/${watermark}-config.json"
 model_name="alpaca-7b-sampling-watermark-distill-${watermark}"
 

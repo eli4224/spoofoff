@@ -56,7 +56,7 @@ def get_prompts(args) -> Dict:
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    dataset = load_dataset(args.dataset_name, args.dataset_config_name, split=args.dataset_split, streaming=args.streaming)
+    dataset = load_dataset(args.dataset_name, args.dataset_config_name, split=args.dataset_split, streaming=False)
 
     max_length = args.prompt_length + args.max_new_tokens
     min_length = args.prompt_length + args.min_new_tokens
@@ -87,22 +87,24 @@ def get_prompts(args) -> Dict:
     # dataset = dataset.filter(filter_length)
     if args.dataset_num_skip > 0:
         dataset = dataset.skip(args.dataset_num_skip)
-    import IPython; IPython.embed()
+    #import IPython; IPython.embed()
+
     dataset = dataset.map(encode, batched=True)
 
-    dataloader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size)
+    # dataloader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size)
 
     prompts = []
     human_text = []
     prompt_text = []
     full_human_text = []
-    for batch in dataloader:
+    for batch in dataset:
         if len(human_text) >= args.num_samples:
             break
         if (type(batch["input_ids"]) == list):
-            batch["input_ids"] = torch.stack(batch["input_ids"], dim=1).to(device)
+            batch["input_ids"] = torch.tensor(batch["input_ids"])[:, None].to(device)
         if (type(batch["attention_mask"]) == list):
-            batch["attention_mask"] = torch.stack(batch["attention_mask"], dim=1).to(device)
+            batch["attention_mask"] = torch.tensor(batch["attention_mask"])[:, None].to(device)
+
         prompts.append(batch)
         human_text.extend(batch["text_completion"])
         prompt_text.extend(batch["prompt_text"])
@@ -122,9 +124,8 @@ def generate_samples(model_name, args, prompts) -> Dict:
     if args.tokenizer_name:
         tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_name)
     else:
-        tokenizer = AutoTokenizer.from_pretrained(model_name)  
-    model = AutoModelForCausalLM.from_pretrained(model_name)
-    model = model.to(device)
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = AutoModelForCausalLM.from_pretrained(model_name).to(device)
     if args.fp16:
         model = model.half()
     model.eval()
@@ -136,9 +137,11 @@ def generate_samples(model_name, args, prompts) -> Dict:
     full_model_text = []
 
     for batch in tqdm(prompts):
-        if len(model_text) >= args.num_samples:
-            break
+        #if len(model_text) >= args.num_samples:
+        #    break
         with torch.no_grad():
+            import IPython;
+            IPython.embed()
             outputs = model.generate(
                 input_ids=batch["input_ids"],
                 attention_mask=batch["attention_mask"],
@@ -192,7 +195,7 @@ for model_name in tqdm(args.model_names):
         continue
 
     try:
-        import IPython; IPython.embed()
+
         samples = generate_samples(model_name, args, prompts)
     except Exception as e:
         print(f"Error generating samples for model {model_name}: {e}")

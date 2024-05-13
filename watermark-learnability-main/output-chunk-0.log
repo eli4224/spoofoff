@@ -1,0 +1,27 @@
+Loading prompts from /nobackup/users/maxdan/data/sampling-distill-train-data/kgw-k1-gamma0.25-delta2_llama_2_7b_prompts_len256_640k.pt
+Loaded prompts from /nobackup/users/maxdan/data/sampling-distill-train-data/kgw-k1-gamma0.25-delta2_llama_2_7b_prompts_len256_640k.pt
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading checkpoint shards:  50%|█████     | 1/2 [00:01<00:01,  1.89s/it]Loading checkpoint shards: 100%|██████████| 2/2 [00:02<00:00,  1.22s/it]Loading checkpoint shards: 100%|██████████| 2/2 [00:02<00:00,  1.32s/it]
+Some weights of the model checkpoint at meta-llama/Llama-2-7b-chat-hf were not used when initializing LlamaForCausalLM: ['model.layers.12.self_attn.rotary_emb.inv_freq', 'model.layers.2.self_attn.rotary_emb.inv_freq', 'model.layers.0.self_attn.rotary_emb.inv_freq', 'model.layers.10.self_attn.rotary_emb.inv_freq', 'model.layers.25.self_attn.rotary_emb.inv_freq', 'model.layers.8.self_attn.rotary_emb.inv_freq', 'model.layers.22.self_attn.rotary_emb.inv_freq', 'model.layers.16.self_attn.rotary_emb.inv_freq', 'model.layers.27.self_attn.rotary_emb.inv_freq', 'model.layers.21.self_attn.rotary_emb.inv_freq', 'model.layers.13.self_attn.rotary_emb.inv_freq', 'model.layers.4.self_attn.rotary_emb.inv_freq', 'model.layers.11.self_attn.rotary_emb.inv_freq', 'model.layers.5.self_attn.rotary_emb.inv_freq', 'model.layers.30.self_attn.rotary_emb.inv_freq', 'model.layers.24.self_attn.rotary_emb.inv_freq', 'model.layers.23.self_attn.rotary_emb.inv_freq', 'model.layers.1.self_attn.rotary_emb.inv_freq', 'model.layers.6.self_attn.rotary_emb.inv_freq', 'model.layers.9.self_attn.rotary_emb.inv_freq', 'model.layers.14.self_attn.rotary_emb.inv_freq', 'model.layers.19.self_attn.rotary_emb.inv_freq', 'model.layers.20.self_attn.rotary_emb.inv_freq', 'model.layers.29.self_attn.rotary_emb.inv_freq', 'model.layers.15.self_attn.rotary_emb.inv_freq', 'model.layers.17.self_attn.rotary_emb.inv_freq', 'model.layers.28.self_attn.rotary_emb.inv_freq', 'model.layers.3.self_attn.rotary_emb.inv_freq', 'model.layers.7.self_attn.rotary_emb.inv_freq', 'model.layers.18.self_attn.rotary_emb.inv_freq', 'model.layers.31.self_attn.rotary_emb.inv_freq', 'model.layers.26.self_attn.rotary_emb.inv_freq']
+- This IS expected if you are initializing LlamaForCausalLM from the checkpoint of a model trained on another task or with another architecture (e.g. initializing a BertForSequenceClassification model from a BertForPreTraining model).
+- This IS NOT expected if you are initializing LlamaForCausalLM from the checkpoint of a model that you expect to be exactly identical (initializing a BertForSequenceClassification model from a BertForSequenceClassification model).
+Traceback (most recent call last):
+  File "/nobackup/users/maxdan/spoofoff/spoofoff/watermark-learnability-main/experiments/generate_sampling_distill_train_data_worker.py", line 178, in <module>
+    model = model.to(device)
+            ^^^^^^^^^^^^^^^^
+  File "/nobackup/users/maxdan/anaconda3/lib/python3.11/site-packages/transformers/modeling_utils.py", line 1878, in to
+    return super().to(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/nobackup/users/maxdan/anaconda3/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1145, in to
+    return self._apply(convert)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/nobackup/users/maxdan/anaconda3/lib/python3.11/site-packages/torch/nn/modules/module.py", line 797, in _apply
+    module._apply(fn)
+  File "/nobackup/users/maxdan/anaconda3/lib/python3.11/site-packages/torch/nn/modules/module.py", line 797, in _apply
+    module._apply(fn)
+  File "/nobackup/users/maxdan/anaconda3/lib/python3.11/site-packages/torch/nn/modules/module.py", line 820, in _apply
+    param_applied = fn(param)
+                    ^^^^^^^^^
+  File "/nobackup/users/maxdan/anaconda3/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1143, in convert
+    return t.to(device, dtype if t.is_floating_point() or t.is_complex() else None, non_blocking)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+torch.cuda.OutOfMemoryError: CUDA out of memory. Tried to allocate 500.00 MiB (GPU 0; 31.50 GiB total capacity; 488.28 MiB already allocated; 93.31 MiB free; 492.00 MiB reserved in total by PyTorch) If reserved memory is >> allocated memory try setting max_split_size_mb to avoid fragmentation.  See documentation for Memory Management and PYTORCH_CUDA_ALLOC_CONF

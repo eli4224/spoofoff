@@ -9,7 +9,7 @@ shift 5
 models="$@"
 tokenizer=$1
 
-# scripts/evaluate/generate_and_evaluate.sh harmfulqa /nobackup/users/maxdan/generate_and_evaluate/out.txt meta-llama/Llama-2-7b-chat-hf meta-llama/Llama-2-7b-chat-hf /nobackup/users/maxdan/anaconda3/bin/python meta-llama/Llama-2-7b-chat-hf
+# scripts/evaluate/generate_and_evaluate.sh harmfulqa /nobackup/users/maxdan/generate_and_evaluate_1/out.txt meta-llama/Llama-2-7b-chat-hf meta-llama/Llama-2-7b-chat-hf /nobackup/users/maxdan/anaconda3/bin/python meta-llama/Llama-2-7b-chat-hf
 shift 5
 models="$@"
 tokenizer=$1
@@ -46,6 +46,7 @@ fi
 $pythonenv experiments/generate_samples.py \
     --model_names ${models} \
     ${dataset_args} \
+    --overwrite_output_file \
     --streaming \
     --fp16 \
     --output_file "${output_file}" \

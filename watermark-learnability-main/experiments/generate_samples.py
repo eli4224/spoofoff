@@ -49,9 +49,9 @@ if args.greedy is True:
 
 def get_prompts(args) -> Dict:
     if args.tokenizer_name:
-        tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_name)
+        tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_name, padding_side="left")
     else:
-        tokenizer = AutoTokenizer.from_pretrained(args.model_names[0])  
+        tokenizer = AutoTokenizer.from_pretrained(args.model_names[0], padding_side="left")
 
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
@@ -66,7 +66,7 @@ def get_prompts(args) -> Dict:
 
     def encode(examples):
         trunc_tokens = tokenizer(
-            examples[args.data_field],
+            ["Question: " + x + "\nAnswer: " for x in examples[args.data_field] ],
             truncation=True,
             padding='max_length',
             max_length=max_length,
@@ -87,7 +87,7 @@ def get_prompts(args) -> Dict:
     # dataset = dataset.filter(filter_length)
     if args.dataset_num_skip > 0:
         dataset = dataset.skip(args.dataset_num_skip)
-    #import IPython; IPython.embed()
+
 
     dataset = dataset.map(encode, batched=True)
 
@@ -97,18 +97,22 @@ def get_prompts(args) -> Dict:
     human_text = []
     prompt_text = []
     full_human_text = []
-    for batch in dataset:
+    print(f"Dataset length: {len(dataset)}")
+    for sample in dataset:
         if len(human_text) >= args.num_samples:
+            print(f"HUMAN TEXT IS LONGER THAN NUM SAMPLES - {len(human_text)} {args.num_samples}")
             break
-        if (type(batch["input_ids"]) == list):
-            batch["input_ids"] = torch.tensor(batch["input_ids"])[:, None].to(device)
-        if (type(batch["attention_mask"]) == list):
-            batch["attention_mask"] = torch.tensor(batch["attention_mask"])[:, None].to(device)
+        if (type(sample["input_ids"]) == list):
+            sample["input_ids"] = torch.tensor(sample["input_ids"])[None, :].to(device)
+        if (type(sample["attention_mask"]) == list):
+            sample["attention_mask"] = torch.tensor(sample["attention_mask"])[None, :].to(device)
 
-        prompts.append(batch)
-        human_text.extend(batch["text_completion"])
-        prompt_text.extend(batch["prompt_text"])
-        full_human_text.extend(batch["text"])
+        prompts.append(sample)
+        human_text.append(sample["text_completion"])
+        prompt_text.append(sample["prompt_text"])
+        full_human_text.append(sample["text"])
+
+
     human_text = human_text[:args.num_samples]
     prompt_text = prompt_text[:args.num_samples]
     full_human_text = full_human_text[:args.num_samples]
@@ -122,12 +126,13 @@ def get_prompts(args) -> Dict:
 
 def generate_samples(model_name, args, prompts) -> Dict:
     if args.tokenizer_name:
-        tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_name)
+        tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_name, padding_side="left")
     else:
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        tokenizer = AutoTokenizer.from_pretrained(model_name, padding_side="left")
     model = AutoModelForCausalLM.from_pretrained(model_name).to(device)
-    if args.fp16:
-        model = model.half()
+    #if args.fp16:
+    #    model = model.half()
+    model.to(torch.float32)
     model.eval()
 
     if tokenizer.pad_token is None:
@@ -136,15 +141,18 @@ def generate_samples(model_name, args, prompts) -> Dict:
     model_text = []
     full_model_text = []
 
-    for batch in tqdm(prompts):
-        #if len(model_text) >= args.num_samples:
-        #    break
+    batches = [
+        prompts[2*i:2*(i+1)]
+        for i in range(len(prompts)//2+1)
+    ]
+    for batch in tqdm(batches):
         with torch.no_grad():
-            import IPython;
-            IPython.embed()
+            batch_input_ids = torch.concat([x['input_ids'] for x in batch], dim=0)
+            batch_attn_masks = torch.concat([x['attention_mask'] for x in batch], dim=0)
+
             outputs = model.generate(
-                input_ids=batch["input_ids"],
-                attention_mask=batch["attention_mask"],
+                input_ids=batch_input_ids,
+                attention_mask=batch_attn_masks,
                 do_sample=DO_SAMPLE,
                 min_new_tokens=args.min_new_tokens,
                 max_new_tokens=args.max_new_tokens,
@@ -153,8 +161,7 @@ def generate_samples(model_name, args, prompts) -> Dict:
                 top_k=args.top_k,
                 pad_token_id=tokenizer.eos_token_id,
             )
-
-            n_input_tokens = batch["input_ids"].shape[1]
+            n_input_tokens = batch_input_ids.shape[1]
             model_text.extend(tokenizer.batch_decode(outputs[:, n_input_tokens:], skip_special_tokens=True))
             full_model_text.extend(tokenizer.batch_decode(outputs, skip_special_tokens=True))
 

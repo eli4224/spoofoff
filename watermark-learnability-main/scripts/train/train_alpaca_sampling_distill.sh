@@ -32,7 +32,7 @@ torchrun --nproc_per_node=4 --master_port=${port} train_sampling_distill.py \
     --num_train_epochs 3 \
     --group_texts ${group_texts} \
     --tf32 True \
-    --bf16 True
-#    --fsdp "full_shard auto_wrap" \
-#    --fsdp_transformer_layer_cls_to_wrap "LlamaDecoderLayer" \
+    --bf16 True \
+    --fsdp "full_shard auto_wrap" \
+    --fsdp_transformer_layer_cls_to_wrap "LlamaDecoderLayer" \
 

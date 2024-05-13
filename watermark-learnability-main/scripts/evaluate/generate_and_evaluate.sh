@@ -9,7 +9,7 @@ shift 5
 models="$@"
 tokenizer=$1
 
-# scripts/evaluate/generate_and_evaluate.sh aparently_anything_goes_here /nobackup/users/maxdan/generate_and_evaluate/out.txt meta-llama/Llama-2-7b-chat-hf meta-llama/Llama-2-7b-hf /nobackup/users/maxdan/anaconda3/bin/python meta-llama/Llama-2-7b-chat-hf
+# scripts/evaluate/generate_and_evaluate.sh harmfulqa /nobackup/users/maxdan/generate_and_evaluate/out.txt meta-llama/Llama-2-7b-chat-hf meta-llama/Llama-2-7b-chat-hf /nobackup/users/maxdan/anaconda3/bin/python meta-llama/Llama-2-7b-chat-hf
 shift 5
 models="$@"
 tokenizer=$1
@@ -53,7 +53,7 @@ $pythonenv experiments/generate_samples.py \
     --min_new_tokens ${num_tokens} \
     --max_new_tokens ${num_tokens} \
     --prompt_length ${prompt_length} \
-    --batch_size 128 \
+    --batch_size 1 \
     --seed 42 \
     --watermark_config_filename experiments/watermark-configs/kgw-k1-gamma0.25-delta2-config.json
 

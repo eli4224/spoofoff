@@ -7,7 +7,9 @@ from typing import Dict
 import torch
 from datasets import load_dataset
 from tqdm import tqdm
-from transformers import AutoTokenizer, AutoModelForCausalLM, LogitsProcessorList, set_seed
+from transformers import LogitsProcessorList, set_seed
+from transformers import AutoModelForCausalLM
+from tokenizer_loader import AutoTokenizer
 
 from watermarks.aar.aar_watermark import AarWatermark
 from watermarks.kgw.watermark_processor import WatermarkLogitsProcessor

@@ -46,10 +46,10 @@ for dictionary in all_all_lines:
     else:
         neg_filter_text.append(dictionary["text"])
 
-with open("/nobackup/users/maxdan/data/sampling-distill-train-data/kgw-k1-gamma0.25-delta2_llama_2_7b_owt_len256_640k_pos.0-11.json", "w") as pos_file:
+with open("/nobackup/users/maxdan/data/sampling-distill-train-data/kgw-k1-gamma0.25-delta2_llama_2_7b_owt_len256_640k_pos_train.0-11.json", "w") as pos_file:
     pos_file.write("\n".join([json.dumps(x) for x in pos_filter_text]))
 
-with open("/nobackup/users/maxdan/data/sampling-distill-train-data/kgw-k1-gamma0.25-delta2_llama_2_7b_owt_len256_640k_pos.0-11.json", "w") as neg_file:
+with open("/nobackup/users/maxdan/data/sampling-distill-train-data/kgw-k1-gamma0.25-delta2_llama_2_7b_owt_len256_640k_neg_train.0-11.json", "w") as neg_file:
     neg_file.write("\n".join([json.dumps(x) for x in neg_filter_text]))
 
 for gen_fname in tqdm(generation_fnames):

@@ -5,12 +5,13 @@ import json
 import numpy as np
 import torch
 from torch.nn import CrossEntropyLoss
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoModelForCausalLM
+from tokenizer_loader import AutoTokenizer
 from tqdm import tqdm
 
 from watermarks.kgw.watermark_processor import WatermarkDetector
 from watermarks.aar.aar_watermark import AarWatermarkDetector
-from watermarks.dgpt import DGPTDetector
+from watermarks.dgpt.dgpt_watermark import DGPTDetector
 from watermarks.watermark_types import WatermarkType
 
 DEFAULT_SEED = 42
@@ -53,6 +54,7 @@ def compute_p_values(samples_dict, tokenizer, kgw_device, truncate=False, num_to
             print(f"Skipping {model_name}, watermark type not specified in config")
             continue
 
+        watermark_config['type'] = WatermarkType.DGPT
         if watermark_config["type"] == WatermarkType.AAR:
             watermark_type = WatermarkType.AAR
             detector = AarWatermarkDetector(
@@ -75,9 +77,9 @@ def compute_p_values(samples_dict, tokenizer, kgw_device, truncate=False, num_to
                 normalizers=[],
             )
         elif watermark_config["type"] == WatermarkType.DGPT:
-            watermark_type == WatermarkType.DGPT
+            watermark_type = WatermarkType.DGPT
             detector = DGPTDetector(
-                model_name=model_name,
+                model_name='meta-llama/Llama-2-7b-chat-hf',
                 device=watermark_config.get("dgpt_device", kgw_device), #assuming get(x, y) retrieves value x and fills y if it isn't present - defuault to using the kgw device
                 tokenizer=tokenizer
             )
@@ -86,9 +88,10 @@ def compute_p_values(samples_dict, tokenizer, kgw_device, truncate=False, num_to
             continue
         
         samples = samples_dict[model_name]["model_text"]
+        prompt_text = samples_dict[model_name]["prompt_text"]
         scores = []
 
-        for s in tqdm(samples):
+        for i, s in tqdm(enumerate(samples)):
             if truncate:
                 tokens = tokenizer(
                     s,
@@ -97,7 +100,10 @@ def compute_p_values(samples_dict, tokenizer, kgw_device, truncate=False, num_to
                     max_length=num_tokens,
                 )["input_ids"]
                 s = tokenizer.decode(tokens, skip_special_tokens=True)
-            score = detector.detect(s)
+            if watermark_type == WatermarkType.DGPT:
+                score = detector.score(s, prompt_text[i])
+            else:
+                score = detector.detect(s)
             if watermark_type == WatermarkType.KGW:
                 score = score["p_value"]
             scores.append(score)
@@ -262,6 +268,7 @@ def main():
 
     if "p_value" in args.metrics:
         compute_p_values(samples_dict, watermark_tokenizer, args.kgw_device, args.truncate, args.num_tokens)
+        import IPython; IPython.embed()
         save_data(data, args.output_file)
 
     # switch to model generated tokenizer
